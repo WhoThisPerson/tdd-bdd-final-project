@@ -55,7 +55,7 @@ def step_impl(context):
             "name": row["name"],
             "description": row["description"],
             "price": row["price"],
-            "availability": row["available"],
+            "available": row["available"] in ["True", "true", "1"],
             "category": row["category"]            
         }
         # Send POST req to endpoint and assert status code matches
