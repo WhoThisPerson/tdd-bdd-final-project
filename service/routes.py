@@ -20,7 +20,7 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -101,6 +101,31 @@ def create_products():
 #
 # PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
 #
+@app.route("/products", methods=["GET"])
+def list_all_products():
+    """Should list all products or find product by name, category, or availability"""
+
+    products = []
+    name = request.args.get("name")
+    category = request.args.get("category")
+    availability = request.args.get("available")
+
+    if name:
+        products = Product.find_by_name(name)
+
+    elif category:
+        category_val = getattr(Category, category.upper())
+        products = Product.find_by_category(category_val)
+
+    elif availability:
+        available_val = availability.lower() in ["true", "yes", "1"]
+        products = Product.find_by_availability(available_val)
+
+    else:
+        products = Product.all()
+
+    product_list = [product.serialize() for product in products]
+    return product_list, status.HTTP_200_OK
 
 ######################################################################
 # R E A D   A   P R O D U C T
@@ -110,6 +135,18 @@ def create_products():
 # PLACE YOUR CODE HERE TO READ A PRODUCT
 #
 
+
+@app.route("/products/<int:product_id>", methods=["GET"])
+def get_products(product_id):
+    """Function will retrieve a product based on its id"""
+    product = Product.find(product_id)
+
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"The product with id '{product_id}' was not found")
+
+    # Serialize and return status back to caller
+    return product.serialize(), status.HTTP_200_OK
+
 ######################################################################
 # U P D A T E   A   P R O D U C T
 ######################################################################
@@ -118,11 +155,37 @@ def create_products():
 # PLACE YOUR CODE TO UPDATE A PRODUCT HERE
 #
 
+
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_products(product_id):
+    """Function will update a product's contents"""
+    check_content_type("application/json")
+
+    product = Product.find(product_id)
+
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"The product with id '{product_id}' was not found")
+    # Deserialize and update product's content
+    product.deserialize(request.get_json())
+    product.id = product_id
+    product.update()
+    return product.serialize(), status.HTTP_200_OK
+
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
 
-
 #
 # PLACE YOUR CODE TO DELETE A PRODUCT HERE
 #
+
+
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """Should delete a product"""
+    product = Product.find(product_id)
+    if product:
+        product.delete()
+        return "", status.HTTP_204_NO_CONTENT
+
+    return "", status.HTTP_404_NOT_FOUND
